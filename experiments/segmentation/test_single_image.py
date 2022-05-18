@@ -33,7 +33,7 @@ def test(args):
                                        backbone = args.backbone, dilated = args.dilated,
                                        lateral = args.lateral, jpu = args.jpu, aux = args.aux,
                                        se_loss = args.se_loss, norm_layer = BatchNorm,
-                                       base_size = args.base_size, crop_size = args.crop_size)
+                                       base_size = args.base_size, crop_size = args.crop_size, root = '/scratch/yz8458/.encoding/models')
         # resuming checkpoint
         if args.resume is None or not os.path.isfile(args.resume):
             raise RuntimeError("=> no checkpoint found at '{}'" .format(args.resume))

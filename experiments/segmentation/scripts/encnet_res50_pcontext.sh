@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 #train
-CUDA_VISIBLE_DEVICES=0,1,2,3 python -m experiments.segmentation.train --dataset pcontext \
-    --model encnet --jpu [JPU|JPU_X] --aux --se-loss \
+CUDA_VISIBLE_DEVICES=0,1,2,3 python3 -m experiments.segmentation.train --dataset pcontext \
+    --model encnet --jpu JPU --aux --se-loss \
     --backbone resnet50 --checkname encnet_res50_pcontext
 
 #test [single-scale]

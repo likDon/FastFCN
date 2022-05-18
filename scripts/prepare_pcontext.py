@@ -6,6 +6,7 @@ import argparse
 
 from encoding.utils import download, mkdir
 
+print(os.getcwd())
 _TARGET_DIR = os.path.expanduser('~/.encoding/data')
 PASD_URL="https://codalabuser.blob.core.windows.net/public/%s"
 

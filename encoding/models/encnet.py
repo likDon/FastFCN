@@ -114,7 +114,7 @@ class EncHead(nn.Module):
         return tuple(outs)
 
 
-def get_encnet(dataset='pascal_voc', backbone='resnet50', pretrained=False,
+def get_encnet(dataset='pascal_voc', backbone='resnet50', pretrained=True,
                root='~/.encoding/models', **kwargs):
     r"""EncNet model from the paper `"Context Encoding for Semantic Segmentation"
     <https://arxiv.org/pdf/1803.08904.pdf>`_

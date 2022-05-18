@@ -3,22 +3,32 @@ import errno
 import shutil
 import hashlib
 import requests
+import numpy as np
 
 import torch
 
 from tqdm import tqdm
 
-__all__ = ['save_checkpoint', 'download', 'mkdir', 'check_sha1']
+__all__ = ['save_checkpoint', 'save_history', 'download', 'mkdir', 'check_sha1']
 
 def save_checkpoint(state, args, is_best, filename='checkpoint.pth.tar'):
     """Saves checkpoint to disk"""
-    directory = "experiments/segmentation/runs/%s/%s/%s/"%(args.dataset, args.model, args.checkname)
+    directory = "experiments/segmentation/runs/%s/"%(args.checkname)
     if not os.path.exists(directory):
         os.makedirs(directory)
     filename = directory + filename
     torch.save(state, filename)
     if is_best:
         shutil.copyfile(filename, directory + 'model_best.pth.tar')
+
+def save_history(history_str, checkname, filename='history.txt'):
+    """Saves training history to disk"""
+    directory = "experiments/segmentation/runs/%s/"%(checkname)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    filename = directory + filename
+    with open(filename, 'a+') as f:
+        f.write(history_str)
 
 
 def download(url, path=None, overwrite=False, sha1_hash=None):

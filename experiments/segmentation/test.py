@@ -33,7 +33,7 @@ def test(args):
         transform.Normalize([.485, .456, .406], [.229, .224, .225])])
     # dataset
     testset = get_segmentation_dataset(args.dataset, split=args.split, mode=args.mode,
-                                       transform=input_transform)
+                                       transform=input_transform, root='/scratch/yz8458/.encoding/data')
     # dataloader
     loader_kwargs = {'num_workers': args.workers, 'pin_memory': True} \
         if args.cuda else {}
@@ -48,7 +48,7 @@ def test(args):
                                        backbone = args.backbone, dilated = args.dilated,
                                        lateral = args.lateral, jpu = args.jpu, aux = args.aux,
                                        se_loss = args.se_loss, norm_layer = BatchNorm,
-                                       base_size = args.base_size, crop_size = args.crop_size)
+                                       base_size = args.base_size, crop_size = args.crop_size, root = '/scratch/yz8458/.encoding/models')
         # resuming checkpoint
         if args.resume is None or not os.path.isfile(args.resume):
             raise RuntimeError("=> no checkpoint found at '{}'" .format(args.resume))
@@ -67,13 +67,17 @@ def test(args):
     metric = utils.SegmentationMetric(testset.num_class)
 
     tbar = tqdm(test_data)
+    pixAcc_avg, mIoU_avg = [], []
     for i, (image, dst) in enumerate(tbar):
         if 'val' in args.mode:
             with torch.no_grad():
                 predicts = evaluator.parallel_forward(image)
                 metric.update(dst, predicts)
                 pixAcc, mIoU = metric.get()
-                tbar.set_description( 'pixAcc: %.4f, mIoU: %.4f' % (pixAcc, mIoU))
+                pixAcc_avg.append(pixAcc)
+                mIoU_avg.append(mIoU)
+#                 tbar.set_description( 'pixAcc: %.4f, mIoU: %.4f' % (pixAcc, mIoU))
+                print('pixAcc: %.4f, mIoU: %.4f' % (pixAcc, mIoU))
         else:
             with torch.no_grad():
                 outputs = evaluator.parallel_forward(image)
@@ -83,6 +87,8 @@ def test(args):
                 mask = utils.get_mask_pallete(predict, args.dataset)
                 outname = os.path.splitext(impath)[0] + '.png'
                 mask.save(os.path.join(outdir, outname))
+    if 'val' in args.mode:
+        print('=>Total, pixAcc: %.4f, mIoU: %.4f' % (sum(pixAcc_avg)/len(pixAcc_avg), sum(mIoU_avg)/len(pixAcc_avg)))
 
 if __name__ == "__main__":
     args = Options().parse()

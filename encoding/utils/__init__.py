@@ -15,5 +15,5 @@ from .pallete import get_mask_pallete
 from .files import *
 
 __all__ = ['LR_Scheduler', 'batch_pix_accuracy', 'batch_intersection_union',
-           'save_checkpoint', 'download', 'mkdir', 'check_sha1',
+           'save_checkpoint', 'save_history', 'download', 'mkdir', 'check_sha1',
            'get_mask_pallete']

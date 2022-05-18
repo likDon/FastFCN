@@ -1,9 +1,8 @@
 ###########################################################################
-# Created by: Hang Zhang 
-# Email: zhang.hang@rutgers.edu 
+# Created by: Hang Zhang
+# Email: zhang.hang@rutgers.edu
 # Copyright (c) 2017
 ###########################################################################
-
 import os
 import numpy as np
 from tqdm import tqdm
@@ -18,6 +17,7 @@ from encoding.nn import SegmentationLosses, SyncBatchNorm
 from encoding.parallel import DataParallelModel, DataParallelCriterion
 from encoding.datasets import get_segmentation_dataset
 from encoding.models import get_segmentation_model
+from .data_augmentation import Cutout, Cutmix, PatchGaussian #data_aug
 
 from .option import Options
 
@@ -32,9 +32,17 @@ class Trainer():
         input_transform = transform.Compose([
             transform.ToTensor(),
             transform.Normalize([.485, .456, .406], [.229, .224, .225])])
+
+        # data_aug
+        if args.data_aug == 'Cutout':
+            input_transform.transforms.append(Cutout())
+        elif args.data_aug == 'PatchGaussian':
+            input_transform.transforms.append(PatchGaussian())
+        self.use_Cutmix = (args.data_aug == 'Cutmix')
+
         # dataset
         data_kwargs = {'transform': input_transform, 'base_size': args.base_size,
-                       'crop_size': args.crop_size}
+                       'crop_size': args.crop_size, 'root': '/scratch/yz8458/.encoding/data'}
         trainset = get_segmentation_dataset(args.dataset, split=args.train_split, mode='train',
                                            **data_kwargs)
         testset = get_segmentation_dataset(args.dataset, split='val', mode ='val',
@@ -52,8 +60,9 @@ class Trainer():
                                        backbone = args.backbone, dilated = args.dilated,
                                        lateral = args.lateral, jpu = args.jpu, aux = args.aux,
                                        se_loss = args.se_loss, norm_layer = SyncBatchNorm,
-                                       base_size = args.base_size, crop_size = args.crop_size)
-        print(model)
+                                       base_size = args.base_size, crop_size = args.crop_size, root = '/scratch/yz8458/.encoding/models')
+        # print(model)
+        print(sum(param.numel() for param in model.parameters() if param.requires_grad) / 1e6)
         # optimizer using different LR
         params_list = [{'params': model.pretrained.parameters(), 'lr': args.lr},]
         if hasattr(model, 'jpu'):
@@ -66,7 +75,7 @@ class Trainer():
             momentum=args.momentum, weight_decay=args.weight_decay)
         # criterions
         self.criterion = SegmentationLosses(se_loss=args.se_loss, aux=args.aux,
-                                            nclass=self.nclass, 
+                                            nclass=self.nclass,
                                             se_weight=args.se_weight,
                                             aux_weight=args.aux_weight)
         self.model, self.optimizer = model, optimizer
@@ -104,6 +113,10 @@ class Trainer():
         for i, (image, target) in enumerate(tbar):
             self.scheduler(self.optimizer, i, epoch, self.best_pred)
             self.optimizer.zero_grad()
+            # data_aug
+            if self.use_Cutmix:
+                image, target = Cutmix(image, target)
+
             if torch_ver == "0.3":
                 image = Variable(image)
                 target = Variable(target)
@@ -112,7 +125,7 @@ class Trainer():
             loss.backward()
             self.optimizer.step()
             train_loss += loss.item()
-            tbar.set_description('Train loss: %.3f' % (train_loss / (i + 1)))
+            # tbar.set_description('Train loss: %.3f' % (train_loss / (i + 1)))
 
         if self.args.no_val:
             # save checkpoint every epoch
@@ -123,6 +136,10 @@ class Trainer():
                 'optimizer': self.optimizer.state_dict(),
                 'best_pred': self.best_pred,
             }, self.args, is_best, filename='checkpoint_{}.pth.tar'.format(epoch))
+
+        train_loss = train_loss / len(self.trainloader)
+        print('==>Epoches %i, Train loss: %.3f\n' % (epoch, train_loss))
+        return train_loss
 
 
     def validation(self, epoch):
@@ -140,6 +157,7 @@ class Trainer():
         self.model.eval()
         total_inter, total_union, total_correct, total_label = 0, 0, 0, 0
         tbar = tqdm(self.valloader, desc='\r')
+        mIoU_avg, pixAcc_avg = 0.0, 0.0
         for i, (image, target) in enumerate(tbar):
             if torch_ver == "0.3":
                 image = Variable(image, volatile=True)
@@ -155,8 +173,9 @@ class Trainer():
             pixAcc = 1.0 * total_correct / (np.spacing(1) + total_label)
             IoU = 1.0 * total_inter / (np.spacing(1) + total_union)
             mIoU = IoU.mean()
-            tbar.set_description(
-                'pixAcc: %.3f, mIoU: %.3f' % (pixAcc, mIoU))
+            mIoU_avg, pixAcc_avg = mIoU_avg + mIoU, pixAcc_avg + pixAcc
+            # tbar.set_description(
+            #     'pixAcc: %.3f, mIoU: %.3f' % (pixAcc, mIoU))
 
         new_pred = (pixAcc + mIoU)/2
         if new_pred > self.best_pred:
@@ -168,6 +187,10 @@ class Trainer():
             'optimizer': self.optimizer.state_dict(),
             'best_pred': new_pred,
         }, self.args, is_best)
+        pixAcc_avg = pixAcc_avg / len(self.valloader)
+        mIoU_avg = mIoU_avg / len(self.valloader)
+        print('==>Epoches %i, pixAcc_avg: %.3f, mIoU_avg: %.3f\n' % (epoch, pixAcc_avg, mIoU_avg))
+        return pixAcc_avg, mIoU_avg
 
 
 if __name__ == "__main__":
@@ -177,6 +200,9 @@ if __name__ == "__main__":
     print('Starting Epoch:', trainer.args.start_epoch)
     print('Total Epoches:', trainer.args.epochs)
     for epoch in range(trainer.args.start_epoch, trainer.args.epochs):
-        trainer.training(epoch)
+        train_loss = trainer.training(epoch)
         if not trainer.args.no_val:
-            trainer.validation(epoch)
+            pixAcc, mIoU = trainer.validation(epoch)
+            history_str = '%.3f,%.3f,%.3f\n' % (train_loss, pixAcc, mIoU)
+            utils.save_history(history_str, args.checkname)
+

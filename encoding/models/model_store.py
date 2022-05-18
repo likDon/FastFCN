@@ -24,7 +24,7 @@ _model_sha1 = {name: checksum for checksum, name in [
     ]}
 
 encoding_repo_url = 'https://hangzh.s3.amazonaws.com/'
-_url_format = '{repo_url}encoding/models/{file_name}.zip'
+_url_format = '{repo_url}/.encoding/models/{file_name}.zip'
 
 def short_hash(name):
     if name not in _model_sha1:

@@ -11,6 +11,9 @@ class Options():
     def __init__(self):
         parser = argparse.ArgumentParser(description='PyTorch \
             Segmentation')
+        # data augmentation method
+        parser.add_argument('--data-aug', type=str, default='Simple',
+                            help = 'data augmentation method(Cutout, Cutmix, PatchGaussian)')
         # model and dataset 
         parser.add_argument('--model', type=str, default='encnet',
                             help='model name (default: encnet)')
