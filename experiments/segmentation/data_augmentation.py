@@ -111,7 +111,6 @@ def Cutmix(image, target):
     return image, target
 
 if __name__ == "__main__":
-    testCutmix()
     n_holes, length, gaussian_sigma = 3, 50, 0.5
     img = Image.open('/Users/apple/Desktop/FastFCNresults/nyu-crop.jpg').convert('RGB')
     img = img.resize((480, 480))
