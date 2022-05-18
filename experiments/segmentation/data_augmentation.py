@@ -110,47 +110,22 @@ def Cutmix(image, target):
     target[:, bbx1:bbx2, bby1:bby2] = target[rand_index, bbx1:bbx2, bby1:bby2]
     return image, target
 
-def testCutmix():
-    img1 = Image.open('/Users/apple/Desktop/FastFCNresults/Cutmix/img1.jpg').convert('RGB').crop((0, 0, 500, 333))
-    target1 = Image.open('/Users/apple/Desktop/FastFCNresults/Cutmix/target1.jpg').convert('RGB').crop((0, 0, 500, 333))
-    img2 = Image.open('/Users/apple/Desktop/FastFCNresults/Cutmix/img2.jpg').convert('RGB').crop((0, 0, 500, 333))
-    target2 = Image.open('/Users/apple/Desktop/FastFCNresults/Cutmix/target2.jpg').convert('RGB').crop((0, 0, 500, 333))
-    input_transform = transform.Compose([transform.ToTensor()])
-    print(img1.size,target1.size, img2.size, target2.size)
-
-    img1, img2, target1, target2 = input_transform(img1), input_transform(img2), input_transform(target1), input_transform(target2)
-
-    lam = 0.9
-    bbx1, bby1, bbx2, bby2 = rand_bbox([1,img1.size()[0],img1.size()[1],img1.size()[2]], lam)
-    bbx1, bby1, bbx2, bby2 = 128, 48, 232, 206
-    print(bbx1, bby1, bbx2, bby2)
-    # img1[:, bbx1:bbx2, bby1:bby2], img2[:, bbx1:bbx2, bby1:bby2] = img2[:, bbx1:bbx2, bby1:bby2], img1[:, bbx1:bbx2, bby1:bby2]
-    # target1[:, bbx1:bbx2, bby1:bby2], target2[bbx1:bbx2, bby1:bby2] = target2[:, bbx1:bbx2, bby1:bby2], target1[:, bbx1:bbx2, bby1:bby2]
-    target2[:, bbx1:bbx2, bby1:bby2] = target1[:, bbx1:bbx2, bby1:bby2]
-
-    toPIL = transform.ToPILImage()
-    img1, img2, target1, target2 = toPIL(img1), toPIL(img2), toPIL(target1), toPIL(target2)
-    # img1.save('/Users/apple/Desktop/FastFCNresults/Cutmix/input1.jpg')
-    # img2.save('/Users/apple/Desktop/FastFCNresults/Cutmix/input2.jpg')
-    # target1.save('/Users/apple/Desktop/FastFCNresults/Cutmix/output1.jpg')
-    target2.save('/Users/apple/Desktop/FastFCNresults/Cutmix/output2.jpg')
-
 if __name__ == "__main__":
     testCutmix()
-    # n_holes, length, gaussian_sigma = 3, 50, 0.5
-    # img = Image.open('/Users/apple/Desktop/FastFCNresults/nyu-crop.jpg').convert('RGB')
-    # img = img.resize((480, 480))
-    #
-    # # PG
-    # # input_transform = transform.Compose([transform.ToTensor(), PatchGaussian(n_holes, length, gaussian_sigma)])
-    # # filename = '%i-%i-%.1f.jpg'%(n_holes, length, gaussian_sigma)
-    # # Cutout
-    # input_transform = transform.Compose([transform.ToTensor(), Cutout(n_holes, length)])
-    # filename = '%i-%i.jpg'%(n_holes, length)
-    # # Cutmix
-    #
-    # img = input_transform(img)
-    # toPIL = transform.ToPILImage()
-    # img = toPIL(img)
-    # img.save('/Users/apple/Desktop/FastFCNresults/'+filename)
+    n_holes, length, gaussian_sigma = 3, 50, 0.5
+    img = Image.open('/Users/apple/Desktop/FastFCNresults/nyu-crop.jpg').convert('RGB')
+    img = img.resize((480, 480))
+    
+    # PG
+    # input_transform = transform.Compose([transform.ToTensor(), PatchGaussian(n_holes, length, gaussian_sigma)])
+    # filename = '%i-%i-%.1f.jpg'%(n_holes, length, gaussian_sigma)
+    # Cutout
+    input_transform = transform.Compose([transform.ToTensor(), Cutout(n_holes, length)])
+    filename = '%i-%i.jpg'%(n_holes, length)
+    # Cutmix
+    
+    img = input_transform(img)
+    toPIL = transform.ToPILImage()
+    img = toPIL(img)
+    img.save('/Users/apple/Desktop/FastFCNresults/'+filename)
 
